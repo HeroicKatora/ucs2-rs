@@ -3,8 +3,7 @@
 #![no_std]
 #![deny(missing_docs)]
 #![deny(clippy::all)]
-
-use bit_field::BitField;
+use core::ops::Range;
 
 /// Possible errors returned by the API.
 #[derive(Debug, Copy, Clone)]
@@ -16,6 +15,11 @@ pub enum Error {
 }
 
 type Result<T> = core::result::Result<T, Error>;
+
+#[inline(always)]
+fn get_bits(n: u16, bits: Range<usize>) -> u16 {
+    (n >> bits.start) & ((1 << bits.len()) - 1)
+}
 
 /// Encodes an input UTF-8 string into a UCS-2 string.
 ///
@@ -111,16 +115,16 @@ where
 
             written += 1;
         } else if (0x0080..0x0800).contains(ch) {
-            let first = 0b1100_0000 + ch.get_bits(6..11) as u8;
-            let last = 0b1000_0000 + ch.get_bits(0..6) as u8;
+            let first = 0b1100_0000 + get_bits(*ch, 6..11) as u8;
+            let last = 0b1000_0000 + get_bits(*ch, 0..6) as u8;
 
             output(&[first, last])?;
 
             written += 2;
         } else {
-            let first = 0b1110_0000 + ch.get_bits(12..16) as u8;
-            let mid = 0b1000_0000 + ch.get_bits(6..12) as u8;
-            let last = 0b1000_0000 + ch.get_bits(0..6) as u8;
+            let first = 0b1110_0000 + get_bits(*ch, 12..16) as u8;
+            let mid = 0b1000_0000 + get_bits(*ch, 6..12) as u8;
+            let last = 0b1000_0000 + get_bits(*ch, 0..6) as u8;
 
             output(&[first, mid, last])?;
 
